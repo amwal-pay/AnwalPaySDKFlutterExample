@@ -4,7 +4,7 @@ This repository demonstrates how to integrate and use the Amwal Pay SDK in a Flu
 
 ## Features
 
-- Multiple payment methods support (Card, Wallet, NFC, Apple Pay, Google Pay)
+- Multiple payment methods support (Card, Wallet, NFC, Apple Pay)
 - Multiple environment support (SIT, UAT, PROD)
 - Multi-language support (Arabic and English)
 - Secure payment processing
@@ -81,11 +81,11 @@ import 'package:amwal_pay_sdk/amwal_pay_sdk.dart';
 import 'package:amwal_pay_sdk/amwal_sdk_settings/amwal_sdk_settings.dart';
 import 'package:amwal_pay_sdk/core/enums/transaction_type.dart';
 
-// Get session token from your backend
+// This GetSDKSessionToken is to be generated from our backend by your backend. The API call to be made is documented in step 3 
 final sessionToken = await getSDKSessionToken(
   merchantId: 'YOUR_MERCHANT_ID',
   secureHashValue: 'YOUR_SECURE_HASH',
-  customerId: 'OPTIONAL_CUSTOMER_ID',
+  customerId: 'OPTIONAL_CUSTOMER_ID', //This is optional, only to be used when saved card functionality is being used.
 );
 
 // Initialize the SDK with Apple Pay
@@ -129,7 +129,7 @@ The SDK supports the following transaction types:
 
 - `TransactionType.cardWallet`: For card and wallet payments
 - `TransactionType.nfc`: For NFC payments
-- `TransactionType.appleOrGooglePay`: For Apple Pay (iOS) or Google Pay (Android)
+- `TransactionType.appleOrGooglePay`: For Apple Pay (iOS)
 
 ## Environments
 
@@ -146,6 +146,104 @@ The SDK uses different webhook URLs based on the environment:
 - SIT: `https://test.amwalpg.com:24443/`
 - UAT: `https://test.amwalpg.com:14443/`
 - PROD: `https://webhook.amwalpg.com/`
+
+  ### 3. Getting the SDK Session Token and Calculation of Secure Hash to call the API
+
+# Endpoint to Fetch SDKSessionToken
+
+## Environment URLs
+
+### Stage
+- **Base URL**: `https://test.amwalpg.com:14443`
+- **Endpoint**: `Membership/GetSDKSessionToken`
+
+### Production
+- **Base URL**: `https://webhook.amwalpg.com`
+- **Endpoint**: `Membership/GetSDKSessionToken`
+
+---
+
+## Description
+This endpoint retrieves the SDK session token.
+
+---
+
+## Headers
+
+| Header        | Value              |
+|---------------|--------------------|
+| Content-Type  | application/json   |
+
+---
+
+## Sample Request
+
+```json
+{
+  "merchantId": 22914,
+  "customerId": "ed520b67-80b2-4e1a-9b86-34208da10e53",
+  "requestDateTime": "2025-02-16T12:43:51Z",
+  "secureHashValue": "AFCEA6D0D29909E6ED5900F543739975B17AABA66CF2C89BBCCD9382A0BC6DD7"
+}
+```
+## Sample Response
+
+```json
+{
+  "success": true,
+  "message": "Success",
+  "data": {
+    "sessionToken": "eyJhbGciOiJkaXIiLCJlbmMiOiJBMTI4Q0JDLUhTMjU2In0..3yAPVR3evEwvIdq808M2uQ..."
+  }
+}
+```
+
+## SecureHash
+
+### Overview
+HMAC SHA256 hashing ensures data integrity and authenticity between systems.
+
+---
+
+### Prepare Request
+
+1. Order key-value pairs **alphabetically**.
+2. Join by `&`, removing the last `&`.
+3. **Do not include** `secureHashValue` in the string.
+4. Convert the resulting string to a byte array.
+5. Generate a secure random key (at least 64 bits).
+6. Concatenate the key and the data byte array.
+7. Generate a **SHA256** hash.
+8. Send the hash with the request as `secureHashValue`.
+
+---
+
+### Example
+
+```json
+{
+  "merchantId": 22914,
+  "customerId": "ed520b67-80b2-4e1a-9b86-34208da10e53",
+  "requestDateTime": "2025-02-16T12:43:51Z",
+  "secureHashValue": "AFCEA6D0D29909E6ED5900F543739975B17AABA66CF2C89BBCCD9382A0BC6DD7"
+}
+```
+
+1. Example String to calculate Secure Hash using SHA-256 when not using customer ID = merchantID=22914&requestDatetime=2025-02-16T12:43:51Z
+
+2. Example String to calculate Secure Hash using SHA-256 when using customer ID = customerID=123&merchantID=22914&requestDatetime=2025-02-16T12:43:51Z
+## Best Practices
+
+1. Always use the appropriate environment (SIT/UAT/PROD) for your use case
+2. Use the correct TransactionType for your payment method
+3. Implement proper error handling for all possible scenarios
+4. Store sensitive data securely using Android's security best practices
+5. Test thoroughly in the test environment before going to production
+6. Keep the SDK updated to the latest version
+7. Follow the security guidelines provided by Amwal Pay
+8. Check for NFC availability before initiating NFC transactions
+9. Handle configuration changes and lifecycle events properly
+
 
 ## Error Handling
 
