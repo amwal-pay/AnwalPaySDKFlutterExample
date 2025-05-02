@@ -26,7 +26,7 @@ apply plugin: 'kotlin-android'
 apply from: "$flutterRoot/packages/flutter_tools/gradle/flutter.gradle"
 
 android {
-    namespace 'com.example.example'  // Replace with your app's namespace
+    namespace 'com.anwalpay.sdkexample'  // Replace with your app's namespace
 
     compileSdkVersion flutter.compileSdkVersion
     ndkVersion flutter.ndkVersion
@@ -46,7 +46,7 @@ android {
 
     defaultConfig {
         minSdkVersion flutter.minSdkVersion
-        applicationId "com.example.example"
+        applicationId "com.anwalpay.sdkexample"
         targetSdkVersion 33
         versionCode flutterVersionCode.toInteger()
         versionName flutterVersionName
