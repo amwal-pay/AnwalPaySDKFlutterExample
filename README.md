@@ -17,7 +17,7 @@ This repository demonstrates how to integrate and use the Amwal Pay SDK in a Flu
 
 ```yaml
 dependencies:
-  amwal_pay_sdk: ^1.0.81
+  amwal_pay_sdk: any  # This will use the latest version
 ```
 
 2. Run flutter pub get to install the dependency:
@@ -239,7 +239,7 @@ HMAC SHA256 hashing ensures data integrity and authenticity between systems.
 3. Implement proper error handling for all possible scenarios
 4. Store sensitive data securely using Android's security best practices
 5. Test thoroughly in the test environment before going to production
-6. Keep the SDK updated to the latest version
+6. Keep the SDK updated to the latest version by running `flutter pub upgrade amwal_pay_sdk` regularly
 7. Follow the security guidelines provided by Amwal Pay
 8. Check for NFC availability before initiating NFC transactions
 9. Handle configuration changes and lifecycle events properly

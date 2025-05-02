@@ -41,7 +41,7 @@ dependencies:
   chucker_flutter: ^1.5.1
 
 
-  amwal_pay_sdk: ^1.0.81
+  amwal_pay_sdk: any
 
 
 
