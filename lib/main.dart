@@ -58,6 +58,7 @@ class _DemoScreenState extends State<DemoScreen> {
   late TextEditingController _secureHashController;
   late TextEditingController _languageController;
   late TextEditingController _transactionTypeController;
+  late TextEditingController _merchantReferenceController;
 
   late GlobalKey<FormState> _formKey;
   late Environment sdkEnv;
@@ -82,6 +83,7 @@ class _DemoScreenState extends State<DemoScreen> {
     _secureHashController = TextEditingController(
       text: '8570CEED656C8818E4A7CE04F22206358F272DAD5F0227D322B654675ABF8F83',
     );
+    _merchantReferenceController = TextEditingController(text: '1234');
     sdkEnv = Environment.UAT;
   }
 
@@ -214,6 +216,7 @@ class _DemoScreenState extends State<DemoScreen> {
           customerCallback: _onCustomerId,
           customerId: customerId,
           onResponse: _onResponse,
+          merchantReference: _merchantReferenceController.text.isNotEmpty ? _merchantReferenceController.text : null,
         ),
       );
     }  catch (e, stackTrace) {
@@ -248,6 +251,7 @@ class _DemoScreenState extends State<DemoScreen> {
     _secureHashController.dispose();
     _amountController.dispose();
     _currencyController.dispose();
+    _merchantReferenceController.dispose();
     super.dispose();
   }
 
@@ -362,6 +366,10 @@ class _DemoScreenState extends State<DemoScreen> {
                         TextForm(
                           title: "Secret Key",
                           controller: _secureHashController,
+                        ),
+                        TextForm(
+                          title: "Merchant Reference (Optional)",
+                          controller: _merchantReferenceController,
                         ),
                         const SizedBox(height: 8),
                         // const Text("Select Environment"),

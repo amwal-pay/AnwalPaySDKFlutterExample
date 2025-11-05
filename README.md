@@ -108,6 +108,7 @@ await AmwalPaySdk.instance.initSdk(
     onResponse: (String? response) {
       // Handle payment response
     },
+    merchantReference: 'optional-merchant-reference', // Optional: Merchant reference for transaction tracking
   ),
 );
 ```
