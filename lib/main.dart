@@ -1,18 +1,20 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:amwal_pay_sdk/amwal_pay_sdk.dart';
 import 'package:amwal_pay_sdk/amwal_sdk_settings/amwal_sdk_settings.dart';
 import 'package:amwal_pay_sdk/core/enums/transaction_type.dart';
 import 'package:amwal_pay_sdk/core/networking/constants.dart';
-import 'package:amwal_pay_sdk/core/networking/dio_client.dart';
 import 'package:amwal_pay_sdk/core/networking/secure_hash_interceptor.dart';
 import 'package:amwal_pay_sdk/localization/locale_utils.dart';
+import 'package:amwal_pay_sdk/core/logger/logar.dart';
 // import 'package:chucker_flutter/chucker_flutter.dart';
 import 'package:dio/dio.dart';
 import 'package:anwalpay/currency_model.dart';
 import 'package:anwalpay/drop_down_form.dart';
 import 'package:anwalpay/text_form.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 
@@ -28,7 +30,7 @@ class MyApp extends StatelessWidget {
     return MediaQuery(
       data: MediaQuery.of(context).copyWith(textScaler: TextScaler.noScaling),
       child: MaterialApp(
-        title: 'Amwal pay Demo',
+        title: 'Amwal Pay SDK Example',
         navigatorObservers: [
           AmwalSdkNavigator.amwalNavigatorObserver,
           // ChuckerFlutter.navigatorObserver
@@ -59,12 +61,18 @@ class _DemoScreenState extends State<DemoScreen> {
   late TextEditingController _languageController;
   late TextEditingController _transactionTypeController;
   late TextEditingController _merchantReferenceController;
+  late TextEditingController _primaryColorController;
+  late TextEditingController _secondaryColorController;
+  late TextEditingController _ignoreReceiptController;
 
   late GlobalKey<FormState> _formKey;
   late Environment sdkEnv;
 
   Timer? _timer;
   bool _isLoading = false;
+  Color _primaryColor = const Color(0xff7F22FF);
+  Color _secondaryColor = const Color(0xff37658c);
+  bool _useBottomSheetDesign = true;
 
   @override
   void initState() {
@@ -78,13 +86,16 @@ class _DemoScreenState extends State<DemoScreen> {
     _currencyController = TextEditingController(text: 'OMR');
     _languageController = TextEditingController(text: 'en');
     _transactionTypeController = TextEditingController(text: 'CARD || Wallet');
-    _merchantIdController = TextEditingController(text: '84131');
-    _terminalController = TextEditingController(text: '811018');
+    _merchantIdController = TextEditingController(text: '7394');
+    _terminalController = TextEditingController(text: '196456');
     _secureHashController = TextEditingController(
-      text: '8570CEED656C8818E4A7CE04F22206358F272DAD5F0227D322B654675ABF8F83',
+      text: 'C0873776E2290E208FBBA27795DFC51B1531E73D187518106FE45DF344865149',
     );
     _merchantReferenceController = TextEditingController(text: '1234');
-    sdkEnv = Environment.UAT;
+    _primaryColorController = TextEditingController(text: '#7F22FF');
+    _secondaryColorController = TextEditingController(text: '#37658c');
+    _ignoreReceiptController = TextEditingController(text: 'false');
+    sdkEnv = Environment.SIT;
   }
 
   Future<String?> getSDKSessionToken({
@@ -122,9 +133,11 @@ class _DemoScreenState extends State<DemoScreen> {
         'merchantId': merchantId,
         'customerId': customerId,
       });
-      debugPrint('Request [POST] => URL: ${webhookUrl+SDKNetworkConstants.getSDKSessionToken}');
-      debugPrint('Request Headers: ${dio.options.headers}');
-      debugPrint('Request Data: {merchantId: $merchantId, secureHashValue: $sec, customerId: $customerId}');
+      Logar.debug(
+          'Request [POST] => URL: ${webhookUrl + SDKNetworkConstants.getSDKSessionToken}');
+      Logar.debug('Request Headers: ${dio.options.headers}');
+      Logar.debug(
+          'Request Data: {merchantId: $merchantId, secureHashValue: $sec, customerId: $customerId}');
       final response = await dio.post(
         SDKNetworkConstants.getSDKSessionToken,
         data: {
@@ -134,14 +147,15 @@ class _DemoScreenState extends State<DemoScreen> {
         },
       );
 
-      debugPrint('Response [${response.statusCode}] => URL: ${SDKNetworkConstants.getSDKSessionToken}');
-      debugPrint('Response Data: ${response.data}');
+      Logar.debug(
+          'Response [${response.statusCode}] => URL: ${SDKNetworkConstants.getSDKSessionToken}');
+      Logar.debug('Response Data: ${response.data}');
 
       if (response.data['success']) {
         return response.data['data']['sessionToken'];
       }
     } on DioException catch (e) {
-      debugPrint('Full API Error: ${e.response}');
+      Logar.error('Full API Error: ${e.response}', error: e);
 
       final errorList = e.response?.data['errorList'];
       final errorMessage =
@@ -167,10 +181,24 @@ class _DemoScreenState extends State<DemoScreen> {
     );
   }
 
-  void _onCustomerId(String? customerId) async {
-    final instance = await SharedPreferences.getInstance();
-    if (customerId != null) {
-      await instance.setString('customer_id', customerId);
+  void _onCustomerId(String? customerJson) async {
+    if (customerJson == null) {
+      return;
+    }
+    try {
+      final Map<String, dynamic> customerData = jsonDecode(customerJson);
+      final customerId = customerData['customerId'] as String?;
+      final customerTokenId = customerData['customerTokenId'] as String?;
+
+      final instance = await SharedPreferences.getInstance();
+      if (customerId != null) {
+        await instance.setString('customer_id', customerId);
+      }
+      if (customerTokenId != null) {
+        await instance.setString('customer_token_id', customerTokenId);
+      }
+    } catch (e) {
+      debugPrint('Error parsing customer callback JSON: $e');
     }
   }
 
@@ -180,7 +208,7 @@ class _DemoScreenState extends State<DemoScreen> {
   }
 
   void _onResponse(String? response) {
-    debugPrint(response);
+    Logar.info("SDK Response received in Flutter: $response");
   }
 
   Future<void> initPayment() async {
@@ -204,7 +232,7 @@ class _DemoScreenState extends State<DemoScreen> {
       await AmwalPaySdk.instance.initSdk(
         settings: AmwalSdkSettings(
           environment: sdkEnv,
-          sessionToken: sessionToken ?? '',
+          sessionToken: sessionToken,
           currency: _currencyController.text,
           amount: _amountController.text,
           transactionId: const Uuid().v1(),
@@ -212,18 +240,26 @@ class _DemoScreenState extends State<DemoScreen> {
           terminalId: _terminalController.text,
           locale: Locale(_languageController.text),
           isMocked: false,
+          additionValues: {
+            'merchantIdentifier': 'merchant.shahd.test',
+            'primaryColor': _primaryColorController.text,
+            'secondaryColor': _secondaryColorController.text,
+            'ignoreReceipt': _ignoreReceiptController.text,
+            'useBottomSheetDesign': _useBottomSheetDesign.toString(),
+          },
           transactionType: _getTransactionType(),
           customerCallback: _onCustomerId,
           customerId: customerId,
           onResponse: _onResponse,
-          merchantReference: _merchantReferenceController.text.isNotEmpty ? _merchantReferenceController.text : null,
+          merchantReference: _merchantReferenceController.text.isNotEmpty
+              ? _merchantReferenceController.text
+              : null,
         ),
       );
-    }  catch (e, stackTrace) {
-      debugPrint('Error during payment: $e');
-      debugPrint('Stack trace: $stackTrace');
+    } catch (e, stackTrace) {
+      Logar.error('Error during payment: $e', error: e, stackTrace: stackTrace);
       await _showErrorDialog('Something went wrong during payment');
-    }  finally {
+    } finally {
       setState(() {
         _isLoading = false;
       });
@@ -238,6 +274,7 @@ class _DemoScreenState extends State<DemoScreen> {
       case 'GOOGLE_PAY':
         return TransactionType.appleOrGooglePay;
       case 'CARD || Wallet':
+        return TransactionType.cardWallet;
       default:
         return TransactionType.cardWallet;
     }
@@ -252,6 +289,9 @@ class _DemoScreenState extends State<DemoScreen> {
     _amountController.dispose();
     _currencyController.dispose();
     _merchantReferenceController.dispose();
+    _primaryColorController.dispose();
+    _secondaryColorController.dispose();
+    _ignoreReceiptController.dispose();
     super.dispose();
   }
 
@@ -311,11 +351,14 @@ class _DemoScreenState extends State<DemoScreen> {
                           isNumeric: true,
                           maxLength: 6,
                           validator: (value) {
-                            if (double.parse(value!) < 0.001) {
+                            if (value == null || value.isEmpty) {
                               return 'Invalid Amount';
-                            } else {
-                              return null;
                             }
+                            final amount = double.tryParse(value);
+                            if (amount == null || amount < 0.001) {
+                              return 'Invalid Amount';
+                            }
+                            return null;
                           },
                         ),
                         DropdownForm<CurrencyModel>(
@@ -368,11 +411,118 @@ class _DemoScreenState extends State<DemoScreen> {
                           controller: _secureHashController,
                         ),
                         TextForm(
-                          title: "Merchant Reference (Optional)",
+                          title: "Merchant Reference",
                           controller: _merchantReferenceController,
                         ),
+                        Row(
+                          children: [
+                            Expanded(child: Text("Primary Color")),
+                            GestureDetector(
+                              onTap: () {
+                                showDialog(
+                                  context: context,
+                                  builder: (BuildContext context) {
+                                    return AlertDialog(
+                                      title: const Text('Pick a color!'),
+                                      content: SingleChildScrollView(
+                                        child: ColorPicker(
+                                          pickerColor: _primaryColor,
+                                          onColorChanged: (Color color) {
+                                            setState(
+                                                () => _primaryColor = color);
+                                            _primaryColorController.text =
+                                                '#${color.value.toRadixString(16).substring(2).toUpperCase()}';
+                                          },
+                                        ),
+                                      ),
+                                      actions: <Widget>[
+                                        ElevatedButton(
+                                          child: const Text('Got it'),
+                                          onPressed: () {
+                                            Navigator.of(context).pop();
+                                          },
+                                        ),
+                                      ],
+                                    );
+                                  },
+                                );
+                              },
+                              child: Container(
+                                height: 50,
+                                width: 50,
+                                color: _primaryColor,
+                              ),
+                            )
+                          ],
+                        ),
+                        SizedBox(height: 10),
+                        Row(
+                          children: [
+                            Expanded(child: Text("Secondary Color")),
+                            GestureDetector(
+                              onTap: () {
+                                showDialog(
+                                  context: context,
+                                  builder: (BuildContext context) {
+                                    return AlertDialog(
+                                      title: const Text('Pick a color!'),
+                                      content: SingleChildScrollView(
+                                        child: ColorPicker(
+                                          pickerColor: _secondaryColor,
+                                          onColorChanged: (Color color) {
+                                            setState(
+                                                () => _secondaryColor = color);
+                                            _secondaryColorController.text =
+                                                '#${color.value.toRadixString(16).substring(2).toUpperCase()}';
+                                          },
+                                        ),
+                                      ),
+                                      actions: <Widget>[
+                                        ElevatedButton(
+                                          child: const Text('Got it'),
+                                          onPressed: () {
+                                            Navigator.of(context).pop();
+                                          },
+                                        ),
+                                      ],
+                                    );
+                                  },
+                                );
+                              },
+                              child: Container(
+                                height: 50,
+                                width: 50,
+                                color: _secondaryColor,
+                              ),
+                            )
+                          ],
+                        ),
+                        DropdownForm<String>(
+                          title: 'Ignore Receipt',
+                          options: const ['true', 'false'],
+                          valueMapper: (val) => val,
+                          nameMapper: (val) => val,
+                          initialValue: 'false',
+                          onChanged: (val) {
+                            _ignoreReceiptController.text = val ?? 'false';
+                          },
+                        ),
                         const SizedBox(height: 8),
-                        // const Text("Select Environment"),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text('Using Bottom Sheet Design'),
+                            Switch(
+                              value: _useBottomSheetDesign,
+                              onChanged: (value) {
+                                setState(() {
+                                  _useBottomSheetDesign = value;
+                                });
+                              },
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
                         const SizedBox(height: 8),
                         DropdownForm<Environment>(
                             title: 'Select Environment',
@@ -384,51 +534,6 @@ class _DemoScreenState extends State<DemoScreen> {
                               if (type == null) return;
                               sdkEnv = Environment.values[int.parse(type)];
                             }),
-                        // Container(
-                        //   decoration: BoxDecoration(
-                        //     border: Border.all(
-                        //       color: Colors.grey, // Specify the border color
-                        //       width: 2.0, // Specify the border width
-                        //     ),
-                        //     borderRadius: BorderRadius.circular(
-                        //       10,
-                        //     ), // Optional: Add rounded corners
-                        //   ),
-                        //   child: Padding(
-                        //     padding: const EdgeInsets.all(4.0),
-                        //     child: DropdownButton<String>(
-                        //       isExpanded: true,
-                        //       value: dropdownValue,
-                        //       onChanged: (String? newValue) {
-                        //         setState(() {
-                        //           dropdownValue = newValue!;
-                        //           switch (dropdownValue) {
-                        //             case 'SIT':
-                        //               sdkEnv = Environment.SIT;
-                        //               break;
-                        //             case 'UAT':
-                        //               sdkEnv = Environment.UAT;
-                        //               break;
-                        //             case 'PROD':
-                        //               sdkEnv = Environment.PROD;
-                        //               break;
-                        //             default:
-                        //               sdkEnv = Environment.PROD;
-                        //               break;
-                        //           }
-                        //         });
-                        //       },
-                        //       items: Environment.values
-                        //           .map<DropdownMenuItem<String>>(
-                        //               (Environment env) {
-                        //         return DropdownMenuItem<String>(
-                        //           value: env.name,
-                        //           child: Text(env.name),
-                        //         );
-                        //       }).toList(),
-                        //     ),
-                        //   ),
-                        // ),
                       ],
                     ),
                   ),
@@ -476,6 +581,7 @@ class _DemoScreenState extends State<DemoScreen> {
                   ],
                 ),
               ),
+              SizedBox(height: MediaQuery.of(context).padding.bottom + 16),
             ],
           ),
         ),

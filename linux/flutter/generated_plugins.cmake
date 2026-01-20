@@ -3,7 +3,7 @@
 #
 
 list(APPEND FLUTTER_PLUGIN_LIST
-  smart_auth
+  amwal_pay_sdk
   url_launcher_linux
 )
 
