@@ -13,6 +13,7 @@ import 'package:dio/dio.dart';
 import 'package:anwalpay/currency_model.dart';
 import 'package:anwalpay/drop_down_form.dart';
 import 'package:anwalpay/text_form.dart';
+import 'package:anwalpay/logs_viewer.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -183,12 +184,18 @@ class _DemoScreenState extends State<DemoScreen> {
 
   void _onCustomerId(String? customerJson) async {
     if (customerJson == null) {
+      LogsManager().addLog("Customer ID callback: null", LogType.customerId);
       return;
     }
     try {
       final Map<String, dynamic> customerData = jsonDecode(customerJson);
       final customerId = customerData['customerId'] as String?;
       final customerTokenId = customerData['customerTokenId'] as String?;
+      
+      LogsManager().addLog(
+        "Customer ID received: $customerId, Token ID: $customerTokenId",
+        LogType.customerId,
+      );
 
       final instance = await SharedPreferences.getInstance();
       if (customerId != null) {
@@ -199,6 +206,10 @@ class _DemoScreenState extends State<DemoScreen> {
       }
     } catch (e) {
       debugPrint('Error parsing customer callback JSON: $e');
+      LogsManager().addLog(
+        "Error parsing customer callback: $e",
+        LogType.error,
+      );
     }
   }
 
@@ -209,25 +220,45 @@ class _DemoScreenState extends State<DemoScreen> {
 
   void _onResponse(String? response) {
     Logar.info("SDK Response received in Flutter: $response");
+    LogsManager().addLog(
+      "SDK Response: ${response ?? 'null'}",
+      LogType.response,
+    );
   }
 
   Future<void> initPayment() async {
     try {
+      LogsManager().addLog("Starting payment initialization", LogType.info);
+      
       final valid = _formKey.currentState!.validate();
-      if (!valid) return;
+      if (!valid) {
+        LogsManager().addLog("Form validation failed", LogType.error);
+        return;
+      }
 
       var customerId = await _getCustomerId();
 
       if (customerId == null || customerId.isEmpty || customerId == "null") {
         customerId = null;
       }
+      
+      LogsManager().addLog(
+        "Getting session token for merchant: ${_merchantIdController.text}",
+        LogType.info,
+      );
+      
       final sessionToken = await getSDKSessionToken(
         merchantId: _merchantIdController.text,
         secureHashValue: _secureHashController.text,
         customerId: customerId,
       );
 
-      if (sessionToken == null) return;
+      if (sessionToken == null) {
+        LogsManager().addLog("Failed to get session token", LogType.error);
+        return;
+      }
+
+      LogsManager().addLog("Session token received, initializing SDK", LogType.info);
 
       await AmwalPaySdk.instance.initSdk(
         settings: AmwalSdkSettings(
@@ -258,6 +289,7 @@ class _DemoScreenState extends State<DemoScreen> {
       );
     } catch (e, stackTrace) {
       Logar.error('Error during payment: $e', error: e, stackTrace: stackTrace);
+      LogsManager().addLog("Payment error: $e", LogType.error);
       await _showErrorDialog('Something went wrong during payment');
     } finally {
       setState(() {
@@ -302,6 +334,13 @@ class _DemoScreenState extends State<DemoScreen> {
       appBar: AppBar(
         title: const Text('Amwal Pay Demo'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.bug_report),
+            onPressed: () {
+              context.showLogsViewer();
+            },
+            tooltip: 'View SDK Logs',
+          ),
           IconButton(
             icon: const Icon(Icons.delete),
             onPressed: () {
