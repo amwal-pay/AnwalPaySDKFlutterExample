@@ -109,6 +109,13 @@ await AmwalPaySdk.instance.initSdk(
       // Handle payment response
     },
     merchantReference: 'optional-merchant-reference', // Optional: Merchant reference for transaction tracking
+    additionValues: { // Optional: Custom key-value pairs for SDK configuration
+      'merchantIdentifier': 'merchant.applepay.amwalpay', // for Apple Pay configuration
+      'useBottomSheetDesign': 'true', // use bottom sheet design (v2)
+      'primaryColor': '#FF5733', // custom primary color
+      'secondaryColor': '#33FF57', // custom secondary color
+      'ignoreReceipt': 'false' // show receipt after transaction
+    },
   ),
 );
 ```
@@ -131,6 +138,67 @@ The SDK supports the following transaction types:
 - `TransactionType.cardWallet`: For card and wallet payments
 - `TransactionType.nfc`: For NFC payments
 - `TransactionType.appleOrGooglePay`: For Apple Pay (iOS)
+
+## Additional Configuration
+
+The SDK supports `additionValues` parameter for passing custom key-value pairs that can be used for various SDK functionalities including UI customization and payment flow control.
+
+### Available Configuration Options
+
+#### UI Customization
+- **`useBottomSheetDesign`**: `'true'` | `'false'` (default: `'false'`)
+  - Controls the payment screen design
+  - `'true'`: Uses the newer bottom sheet design (v2) - slides up from bottom covering 90% of screen
+  - `'false'`: Uses the original full-screen design
+
+- **`primaryColor`**: Hex color string (e.g., `'#FF5733'`)
+  - Sets the primary theme color for the SDK UI
+  - Default: `#7F22FF` (purple)
+
+- **`secondaryColor`**: Hex color string (e.g., `'#33FF57'`)
+  - Sets the secondary theme color for the SDK UI
+  - Default: `#37658c` (blue)
+
+#### Payment Flow
+- **`ignoreReceipt`**: `'true'` | `'false'` (default: `'false'`)
+  - Controls whether to show the receipt screen after transaction
+  - `'true'`: Skips the receipt display
+  - `'false'`: Shows the receipt screen
+
+- **`merchantIdentifier`**: String (default: `'merchant.applepay.amwalpay'`)
+  - Apple Pay merchant identifier for iOS
+
+### Usage Examples
+
+```dart
+// Using bottom sheet design with custom colors
+AmwalSdkSettings(
+  // ... other required parameters
+  additionValues: {
+    'useBottomSheetDesign': 'true',
+    'primaryColor': '#FF5733',
+    'secondaryColor': '#33FF57',
+  },
+)
+
+// Using custom Apple Pay merchant identifier
+AmwalSdkSettings(
+  // ... other required parameters
+  additionValues: {
+    'merchantIdentifier': 'merchant.your.custom.identifier',
+  },
+)
+
+// Minimal configuration with just bottom sheet
+AmwalSdkSettings(
+  // ... other required parameters
+  additionValues: {
+    'useBottomSheetDesign': 'true',
+  },
+)
+```
+
+**Note:** All boolean values should be passed as strings (`'true'` or `'false'`).
 
 ## Environments
 
